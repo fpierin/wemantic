@@ -14,13 +14,13 @@
 		<app.version>1</app.version>
 		<appengine.version>1.9.28</appengine.version>
 		<gcloud.plugin.version>2.0.9.74.v20150814</gcloud.plugin.version>
+		<gson.version>2.4</gson.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<maven.compiler.showDeprecation>true</maven.compiler.showDeprecation>
 
 		<guice.version>4.0.0</guice.version>
 		<jstl.version>1.2</jstl.version>
 		<servlet-api.version>2.5</servlet-api.version>
-
 	</properties>
 
 	<prerequisites>
@@ -36,9 +36,21 @@
 		</dependency>
 
 		<dependency>
+			<groupId>com.google.code.gson</groupId>
+			<artifactId>gson</artifactId>
+			<version>${gson.version}</version>
+		</dependency>
+
+
+		<dependency>
 			<groupId>org.apache.httpcomponents</groupId>
 			<artifactId>httpcore</artifactId>
 			<version>4.0-beta3</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-lang3</artifactId>
+			<version>3.4</version>
 		</dependency>
 
 
@@ -125,8 +137,9 @@
 					<!-- address>0.0.0.0</address> <port>8080</port -->
 					<!-- Comment in the below snippet to enable local debugging with a remote 
 						debugger like those included with Eclipse or IntelliJ -->
-					<!-- jvmFlags> <jvmFlag>-agentlib:jdwp=transport=dt_socket,address=8000,server=y,suspend=n</jvmFlag> 
-						</jvmFlags -->
+					<jvmFlags>
+						<jvmFlag>-agentlib:jdwp=transport=dt_socket,address=8000,server=y,suspend=n</jvmFlag>
+					</jvmFlags>
 				</configuration>
 			</plugin>
 			<plugin>
