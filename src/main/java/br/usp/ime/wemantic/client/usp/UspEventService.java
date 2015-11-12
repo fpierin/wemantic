@@ -1,21 +1,18 @@
 package br.usp.ime.wemantic.client.usp;
 
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringEscapeUtils;
-
-import com.google.common.util.concurrent.ListeningExecutorService;
-import com.google.common.util.concurrent.MoreExecutors;
+import org.apache.commons.lang3.StringUtils;
 
 import br.usp.ime.wemantic.commons.HttpResponse;
 import br.usp.ime.wemantic.commons.RestfullHttpClient;
@@ -34,42 +31,18 @@ public class UspEventService implements EventService {
 	public List<Event> retrieve() {
 		final String uri = "http://www.eventos.usp.br/";
 		final String html = extractHtmlFromURI(uri);
+		final List<Event> resultsFuture = new ArrayList<>();
 		final Set<String> eventsUris = eventsUrisFromHtml(html);
 
-		final ExecutorService executor = Executors.newFixedThreadPool(50);
-		final ListeningExecutorService les = MoreExecutors.listeningDecorator(executor);
-
-		final List<Callable<Event>> eventCalls = createEventCalls(eventsUris);
-		final List<Event> resultsFuture = new ArrayList<>();
-		try {
-			final List<Future<Event>> invokeAll = les.invokeAll(eventCalls);
-			for (final Future<Event> future : invokeAll) {
-				try {
-					resultsFuture.add(future.get());
-				} catch (final ExecutionException e) {
-					e.printStackTrace();
-				}
-			}
-		} catch (final InterruptedException e1) {
-			e1.printStackTrace();
-		}
-
-		executor.shutdown();
-		return resultsFuture;
-	}
-
-	private List<Callable<Event>> createEventCalls(final Set<String> eventsUris) {
-		final List<Callable<Event>> cList = new ArrayList<>();
+		int i = 0;
 		for (final String eventUri : eventsUris) {
-			cList.add(new Callable<Event>() {
-				@Override
-				public Event call() throws Exception {
-					return eventFromURI(eventUri);
-				}
-
-			});
+			i++;
+			resultsFuture.add(eventFromURI(eventUri));
+			if (i == 10) {
+				break;
+			}
 		}
-		return cList;
+		return resultsFuture;
 	}
 
 	private String extractHtmlFromURI(final String uri) {
@@ -91,17 +64,38 @@ public class UspEventService implements EventService {
 	}
 
 	private Event eventFromURI(final String uri) {
-		final String eventHtml = extractHtmlFromURI(uri);
-		final String titlePattern = "<div class=\"evento-titulo\" style=\"width: 470px;\">(.*?)</div>";
-		final Pattern pattern = Pattern.compile(titlePattern, Pattern.DOTALL);
-		final Matcher matcher = pattern.matcher(eventHtml);
+		final String html = extractHtmlFromURI(uri);
+		final String unescapedHtml = StringEscapeUtils.unescapeHtml3(html);
+		final String nameRegex = "<div class=\"evento-titulo\" style=\"width: 470px;\">(.*?)</div>";
+		final String addressRegex = "var endereco = \\'(.*?)\\'";
+		final String dateRegex = "<td>([\\d]{2}/[\\d]{2}/[\\d]{2}) ";
+
+		final Event e = new Event();
+		e.setName(regexFromHtml(unescapedHtml, nameRegex));
+		e.setAddress(regexFromHtml(unescapedHtml, addressRegex));
+		e.setDate(dateFrom(regexFromHtml(unescapedHtml, dateRegex), "dd/MM/yy"));
+		return e;
+	}
+
+	private Date dateFrom(final String word, final String pattern) {
+		final DateFormat df = new SimpleDateFormat(pattern);
+		try {
+			return df.parse(word);
+		} catch (final ParseException e) {
+			e.printStackTrace();
+		}
+		;
+		return null;
+	}
+
+	private String regexFromHtml(final String html, final String regex) {
+		final Pattern pattern = Pattern.compile(regex, Pattern.DOTALL);
+		final Matcher matcher = pattern.matcher(html);
 		if (matcher.find()) {
-			final Event e = new Event();
-			final String title = matcher.group(1);
-			final String name = StringEscapeUtils.unescapeHtml3(title);
-			e.setName(name);
-			System.out.println(e);
-			return e;
+			final String group = matcher.group(1);
+			if (StringUtils.isNotEmpty(group)) {
+				return group.trim();
+			}
 		}
 		return null;
 	}
@@ -110,6 +104,7 @@ public class UspEventService implements EventService {
 		final RestfullHttpClient restfullHttpClient = new RestfullHttpClientImpl();
 		final EventService es = new UspEventService(restfullHttpClient);
 		final List<Event> et = es.retrieve();
+		System.out.println();
 		System.out.println(et);
 	}
 

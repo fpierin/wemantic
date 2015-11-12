@@ -25,7 +25,6 @@ public class EventServlet extends HttpServlet {
 		final RestfullHttpClient restfullHttpClient = new RestfullHttpClientImpl();
 		final EventService es = new UspEventService(restfullHttpClient);
 		final List<Event> et = es.retrieve();
-		System.out.println(et);
 
 		final SerializationService ss = new JsonSerializationService();
 		final String json = ss.toJson(et);
